@@ -53,6 +53,7 @@ export default function ProfilePage() {
         location: data.location ?? "",
         links: data.links?.length ? data.links.join("\n") : undefined,
         professionTrack: data.professionTrack ?? "",
+        careerObjective: data.careerObjective ?? "",
       });
     }
   }, [data, editingContact]);
@@ -117,6 +118,7 @@ export default function ProfilePage() {
         location: contactForm.location || undefined,
         links,
         professionTrack: contactForm.professionTrack || undefined,
+        careerObjective: contactForm.careerObjective || undefined,
       });
       loadProfile();
       setEditingContact(false);
@@ -255,6 +257,16 @@ export default function ProfilePage() {
                   className="px-3 py-2 border border-gray-300 rounded-lg"
                 />
               </label>
+              <label className="grid gap-1">
+                <span className="text-gray-600">Career objective</span>
+                <textarea
+                  value={contactForm.careerObjective ?? ""}
+                  onChange={(e) => setContactForm((f) => ({ ...f, careerObjective: e.target.value }))}
+                  rows={3}
+                  className="px-3 py-2 border border-gray-300 rounded-lg"
+                  placeholder="e.g. Seeking a software engineering role..."
+                />
+              </label>
               <button type="submit" className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 w-fit">
                 Save contact
               </button>
@@ -267,6 +279,7 @@ export default function ProfilePage() {
               <p><strong>Location:</strong> {data?.location ?? "—"}</p>
               <p><strong>Links:</strong> {data?.links?.length ? data.links.join(", ") : "—"}</p>
               <p><strong>Track:</strong> {data?.professionTrack ?? "—"}</p>
+              <p><strong>Career objective:</strong> {data?.careerObjective ?? "—"}</p>
             </div>
           )}
         </div>

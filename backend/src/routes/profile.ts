@@ -28,6 +28,7 @@ profileRouter.put("/", async (req: AuthRequest, res) => {
       location?: string;
       links?: string[];
       professionTrack?: string;
+      careerObjective?: string;
     };
     const profile = await prisma.profile.upsert({
       where: { userId: req.user!.userId },
@@ -39,6 +40,7 @@ profileRouter.put("/", async (req: AuthRequest, res) => {
         location: body.location ?? null,
         links: body.links ?? [],
         professionTrack: body.professionTrack ?? null,
+        careerObjective: body.careerObjective ?? null,
       },
       update: {
         ...(body.fullName !== undefined && { fullName: body.fullName }),
@@ -47,6 +49,7 @@ profileRouter.put("/", async (req: AuthRequest, res) => {
         ...(body.location !== undefined && { location: body.location }),
         ...(body.links !== undefined && { links: body.links }),
         ...(body.professionTrack !== undefined && { professionTrack: body.professionTrack }),
+        ...(body.careerObjective !== undefined && { careerObjective: body.careerObjective }),
       },
       include: { educations: true, experiences: true, skills: true, certifications: true, awards: true },
     });

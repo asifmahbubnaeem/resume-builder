@@ -177,6 +177,7 @@ export interface ProfileResponse {
   location: string | null;
   links: string[];
   professionTrack: string | null;
+  careerObjective: string | null;
   educations: Education[];
   experiences: Experience[];
   skills: Skill[];
@@ -207,6 +208,7 @@ export interface ProfilePayload {
   location?: string;
   links?: string[];
   professionTrack?: string;
+  careerObjective?: string;
 }
 
 export interface Education {
@@ -242,6 +244,7 @@ export interface ResumeDraft {
   location: string | null;
   links: string[];
   professionTrack: string | null;
+  careerObjective: string | null;
   educations: Array<{ degree: string; institution: string; startDate: string | null; endDate: string | null; details: string | null; gpa: string | null; honors: string | null }>;
   experiences: Array<{ role: string; company: string; startDate: string | null; endDate: string | null; bullets: string[] }>;
   skills: Array<{ name: string; category: string | null }>;

@@ -123,6 +123,9 @@ export default function ResumePage() {
             {draft.professionTrack && (
               <p className="italic">{draft.professionTrack}</p>
             )}
+            {draft.careerObjective && (
+              <p className="mt-2">{draft.careerObjective}</p>
+            )}
             <div>
               <h3 className="font-medium mt-4">Education</h3>
               {draft.educations?.length

@@ -32,6 +32,7 @@ model Profile {
   location       String?
   links          String[] // JSON array of URLs or "LinkedIn|url"
   professionTrack String? @map("profession_track")
+  careerObjective String? @db.Text @map("career_objective")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
   educations     Education[]

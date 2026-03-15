@@ -87,6 +87,7 @@ interface EscapedFragments {
   contact: string;
   links: string;
   track: string;
+  objective: string;
   education: string;
   experience: string;
   skills: string;
@@ -101,6 +102,7 @@ function buildFragments(data: ResumeData): EscapedFragments {
   const contact = [data.email, data.phone, data.location].filter(Boolean).map(escape).join(" · ");
   const links = data.links.length ? data.links.map((l) => `<a href="${escape(l)}">${escape(l)}</a>`).join(" · ") : "";
   const track = data.professionTrack ? escape(data.professionTrack) : "";
+  const objective = data.careerObjective ? escape(data.careerObjective) : "";
 
   const education = data.educations
     .map(
@@ -145,6 +147,7 @@ function buildFragments(data: ResumeData): EscapedFragments {
     contact,
     links: links ? `<p>${links}</p>` : "",
     track: track ? `<p><em>${track}</em></p>` : "",
+    objective: objective ? `<h2>Career objective</h2><p class="objective-p">${objective}</p>` : "",
     education,
     experience,
     skills,
@@ -163,6 +166,7 @@ function buildDefaultLayout(data: ResumeData, t: TemplateStyle, f: EscapedFragme
   <div class="contact">${f.contact}</div>
   ${f.links}
   ${f.track}
+  ${f.objective}
   <h2>Education</h2>
   ${f.education || "<p>—</p>"}
   <h2>Experience</h2>
@@ -181,6 +185,7 @@ function buildTableLayout(data: ResumeData, t: TemplateStyle, f: EscapedFragment
   <div class="contact">${f.contact}</div>
   ${f.links}
   ${f.track}
+  ${f.objective}
   <h2>Education</h2>
   <table class="resume-table"><thead><tr><th>Period</th><th>Degree / Institution</th><th>Details</th></tr></thead><tbody>${f.educationTableRows || "<tr><td colspan=\"3\">—</td></tr>"}</tbody></table>
   <h2>Experience</h2>
@@ -206,6 +211,7 @@ function buildBulletLayout(data: ResumeData, t: TemplateStyle, f: EscapedFragmen
   <div class="contact">${f.contact}</div>
   ${f.links}
   ${f.track}
+  ${f.objective}
   <h2>Education</h2>
   <ul class="section-list">${educationBullets || "<li>—</li>"}</ul>
   <h2>Experience</h2>
@@ -234,6 +240,7 @@ function buildDescriptiveLayout(data: ResumeData, t: TemplateStyle, f: EscapedFr
   <div class="contact">${f.contact}</div>
   ${f.links}
   ${f.track}
+  ${f.objective}
   <h2>Education</h2>
   ${educationParagraphs || "<p>—</p>"}
   <h2>Experience</h2>
@@ -266,6 +273,7 @@ function buildMultipanelLayout(data: ResumeData, t: TemplateStyle, f: EscapedFra
       ${f.track}
       <h2>Profile</h2>
       <p class="track-p">${data.professionTrack ? escape(data.professionTrack) : "—"}</p>
+      ${f.objective}
       <h2>Education</h2>
       ${f.education || "<p>—</p>"}
       <h2>Experience</h2>
@@ -282,6 +290,7 @@ function getBaseStyles(t: TemplateStyle, layout: LayoutType): string {
     body { font-family: ${t.font}; font-size: 11pt; line-height: 1.4; color: #1f2937; max-width: 800px; margin: 0 auto; padding: 24px; }
     h1 { font-size: 24pt; margin: 0 0 8px 0; color: ${t.accent}; }
     .contact { color: #6b7280; margin-bottom: 16px; }
+    .objective-p { margin: 4px 0 12px 0; }
     h2 { font-size: 12pt; text-transform: ${h2Transform}; letter-spacing: ${h2LetterSpacing}; color: ${t.accent}; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; margin: 20px 0 8px 0; }
     ul { margin: 4px 0; padding-left: 20px; }
     div + div { margin-top: 12px; }

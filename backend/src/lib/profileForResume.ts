@@ -7,6 +7,7 @@ export interface ResumeData {
   location: string | null;
   links: string[];
   professionTrack: string | null;
+  careerObjective: string | null;
   educations: Array<{ degree: string; institution: string; startDate: string | null; endDate: string | null; details: string | null; gpa: string | null; honors: string | null }>;
   experiences: Array<{ role: string; company: string; startDate: string | null; endDate: string | null; bullets: string[] }>;
   skills: Array<{ name: string; category: string | null }>;
@@ -38,6 +39,7 @@ export async function getProfileForResume(
       location: null,
       links: [],
       professionTrack: null,
+      careerObjective: null,
       educations: [],
       experiences: [],
       skills: [],
@@ -80,6 +82,7 @@ export async function getProfileForResume(
     location: profile.location,
     links: profile.links,
     professionTrack: profile.professionTrack,
+    careerObjective: profile.careerObjective,
     educations: profile.educations.map((e) => ({
       degree: e.degree,
       institution: e.institution,

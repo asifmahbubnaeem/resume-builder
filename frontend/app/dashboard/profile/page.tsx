@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { profile as profileApi, conversation } from "@/lib/api";
 import type {
   ProfileResponse,
@@ -12,6 +12,7 @@ import type {
   Award,
   ProfilePayload,
 } from "@/lib/api";
+import { SortableSectionList } from "@/components/SortableSectionList";
 
 type Flow = "none" | "skill" | "experience";
 
@@ -26,7 +27,7 @@ export default function ProfilePage() {
 
   // Edit state: which section is being edited (contact) or which id is being edited
   const [editingContact, setEditingContact] = useState(false);
-  const [contactForm, setContactForm] = useState<ProfilePayload>({});
+  const [contactForm, setContactForm] = useState<Omit<ProfilePayload, "links"> & { links?: string }>({});
   const [editingEducationId, setEditingEducationId] = useState<string | null>(null);
   const [editingExperienceId, setEditingExperienceId] = useState<string | null>(null);
   const [editingSkillId, setEditingSkillId] = useState<string | null>(null);
@@ -178,6 +179,86 @@ export default function ProfilePage() {
       console.error(err);
     }
   }
+
+  const reorderEducations = useCallback(
+    async (orderedIds: string[]) => {
+      try {
+        await Promise.all(
+          orderedIds.map((id, index) =>
+            profileApi.patchEducation(id, { orderIndex: index })
+          )
+        );
+        loadProfile();
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    []
+  );
+
+  const reorderExperiences = useCallback(
+    async (orderedIds: string[]) => {
+      try {
+        await Promise.all(
+          orderedIds.map((id, index) =>
+            profileApi.patchExperience(id, { orderIndex: index })
+          )
+        );
+        loadProfile();
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    []
+  );
+
+  const reorderSkills = useCallback(
+    async (orderedIds: string[]) => {
+      try {
+        await Promise.all(
+          orderedIds.map((id, index) =>
+            profileApi.patchSkill(id, { orderIndex: index })
+          )
+        );
+        loadProfile();
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    []
+  );
+
+  const reorderCertifications = useCallback(
+    async (orderedIds: string[]) => {
+      try {
+        await Promise.all(
+          orderedIds.map((id, index) =>
+            profileApi.patchCertification(id, { orderIndex: index })
+          )
+        );
+        loadProfile();
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    []
+  );
+
+  const reorderAwards = useCallback(
+    async (orderedIds: string[]) => {
+      try {
+        await Promise.all(
+          orderedIds.map((id, index) =>
+            profileApi.patchAward(id, { orderIndex: index })
+          )
+        );
+        loadProfile();
+      } catch (err) {
+        console.error(err);
+      }
+    },
+    []
+  );
 
   async function handleImageUpload(file: File) {
     if (!file.type.startsWith("image/")) return;
@@ -381,36 +462,53 @@ export default function ProfilePage() {
           />
         )}
         {data?.educations?.length ? (
-          <ul className="space-y-2">
-            {data.educations.map((e) =>
-              editingEducationId === e.id ? (
-                <EditEducationForm
-                  key={e.id}
-                  item={e}
-                  onSaved={() => {
-                    loadProfile();
-                    setEditingEducationId(null);
-                  }}
-                  onCancel={() => setEditingEducationId(null)}
-                />
-              ) : (
-                <li key={e.id} className="flex items-start justify-between gap-2 py-1 border-b border-gray-100 last:border-0">
-                  <div className="text-sm">
-                    <strong>{e.degree}</strong> — {e.institution}
-                    {(e.startDate || e.endDate) && (
-                      <span className="text-gray-500"> ({[e.startDate, e.endDate].filter(Boolean).join(" – ")})</span>
-                    )}
-                    {e.gpa && <span className="text-gray-600"> · GPA: {e.gpa}</span>}
-                    {e.honors && <span className="text-gray-600"> · {e.honors}</span>}
-                    {e.details && <p className="text-gray-600 mt-0.5">{e.details}</p>}
-                  </div>
-                  <span className="flex gap-1 shrink-0">
-                    <button type="button" onClick={() => setEditingEducationId(e.id)} className="text-blue-600 text-sm hover:underline">Edit</button>
-                    <button type="button" onClick={() => deleteEducation(e.id)} className="text-red-600 text-sm hover:underline">Delete</button>
-                  </span>
+          <ul className="space-y-2 list-none pl-0">
+            <SortableSectionList
+              items={data.educations}
+              onReorder={reorderEducations}
+              reorderDisabled={data.educations.length <= 1}
+              renderItem={(e, _index, { sortableProps, moveUp, moveDown, moveUpDisabled, moveDownDisabled }) => {
+                const isEditing = editingEducationId === e.id;
+                return (
+                <li
+                  ref={sortableProps.setNodeRef}
+                  style={sortableProps.style}
+                  {...sortableProps.attributes}
+                  {...(!isEditing && (sortableProps.listeners as Record<string, unknown>))}
+                  className={`flex items-start justify-between gap-2 py-1 border-b border-gray-100 last:border-0 ${!isEditing ? "cursor-grab active:cursor-grabbing touch-none" : ""}`}
+                >
+                  {isEditing ? (
+                    <EditEducationForm
+                      item={e}
+                      onSaved={() => {
+                        loadProfile();
+                        setEditingEducationId(null);
+                      }}
+                      onCancel={() => setEditingEducationId(null)}
+                    />
+                  ) : (
+                    <>
+                      <div className="text-sm flex-1 min-w-0">
+                        <strong>{e.degree}</strong> — {e.institution}
+                        {(e.startDate || e.endDate) && (
+                          <span className="text-gray-500"> ({[e.startDate, e.endDate].filter(Boolean).join(" – ")})</span>
+                        )}
+                        {e.gpa && <span className="text-gray-600"> · GPA: {e.gpa}</span>}
+                        {e.honors && <span className="text-gray-600"> · {e.honors}</span>}
+                        {e.details && <p className="text-gray-600 mt-0.5">{e.details}</p>}
+                      </div>
+                      <span className="flex items-center gap-1 shrink-0">
+                        <button type="button" onClick={(ev) => { ev.stopPropagation(); moveUp(); }} disabled={moveUpDisabled} className="p-1 rounded text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed" title="Move up" aria-label="Move up">↑</button>
+                        <button type="button" onClick={(ev) => { ev.stopPropagation(); moveDown(); }} disabled={moveDownDisabled} className="p-1 rounded text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed" title="Move down" aria-label="Move down">↓</button>
+                        <button type="button" onClick={() => setEditingEducationId(e.id)} className="text-blue-600 text-sm hover:underline">Edit</button>
+                        <button type="button" onClick={() => deleteEducation(e.id)} className="text-red-600 text-sm hover:underline">Delete</button>
+                      </span>
+                    </>
+                  )}
                 </li>
-              )
-            )}
+                );
+              }}
+            />
           </ul>
         ) : (
           <p className="text-sm text-gray-500">No education added yet.</p>
@@ -433,36 +531,53 @@ export default function ProfilePage() {
           />
         )}
         {data?.experiences?.length ? (
-          <ul className="space-y-3">
-            {data.experiences.map((e) =>
-              editingExperienceId === e.id ? (
-                <EditExperienceForm
-                  key={e.id}
-                  item={e}
-                  onSaved={() => {
-                    loadProfile();
-                    setEditingExperienceId(null);
-                  }}
-                  onCancel={() => setEditingExperienceId(null)}
-                />
-              ) : (
-                <li key={e.id} className="flex items-start justify-between gap-2 py-1 border-b border-gray-100 last:border-0">
-                  <div className="text-sm">
-                    <strong>{e.role}</strong> at {e.company}
-                    {(e.startDate || e.endDate) && (
-                      <span className="text-gray-500"> ({[e.startDate, e.endDate].filter(Boolean).join(" – ")})</span>
-                    )}
-                    {e.bullets?.length ? (
-                      <ul className="list-disc list-inside mt-1 text-gray-600">{e.bullets.map((b, i) => <li key={i}>{b}</li>)}</ul>
-                    ) : null}
-                  </div>
-                  <span className="flex gap-1 shrink-0">
-                    <button type="button" onClick={() => setEditingExperienceId(e.id)} className="text-blue-600 text-sm hover:underline">Edit</button>
-                    <button type="button" onClick={() => deleteExperience(e.id)} className="text-red-600 text-sm hover:underline">Delete</button>
-                  </span>
+          <ul className="space-y-3 list-none pl-0">
+            <SortableSectionList
+              items={data.experiences}
+              onReorder={reorderExperiences}
+              reorderDisabled={data.experiences.length <= 1}
+              renderItem={(e, _index, { sortableProps, moveUp, moveDown, moveUpDisabled, moveDownDisabled }) => {
+                const isEditing = editingExperienceId === e.id;
+                return (
+                <li
+                  ref={sortableProps.setNodeRef}
+                  style={sortableProps.style}
+                  {...sortableProps.attributes}
+                  {...(!isEditing && (sortableProps.listeners as Record<string, unknown>))}
+                  className={`flex items-start justify-between gap-2 py-1 border-b border-gray-100 last:border-0 ${!isEditing ? "cursor-grab active:cursor-grabbing touch-none" : ""}`}
+                >
+                  {isEditing ? (
+                    <EditExperienceForm
+                      item={e}
+                      onSaved={() => {
+                        loadProfile();
+                        setEditingExperienceId(null);
+                      }}
+                      onCancel={() => setEditingExperienceId(null)}
+                    />
+                  ) : (
+                    <>
+                      <div className="text-sm flex-1 min-w-0">
+                        <strong>{e.role}</strong> at {e.company}
+                        {(e.startDate || e.endDate) && (
+                          <span className="text-gray-500"> ({[e.startDate, e.endDate].filter(Boolean).join(" – ")})</span>
+                        )}
+                        {e.bullets?.length ? (
+                          <ul className="list-disc list-inside mt-1 text-gray-600">{e.bullets.map((b, i) => <li key={i}>{b}</li>)}</ul>
+                        ) : null}
+                      </div>
+                      <span className="flex items-center gap-1 shrink-0">
+                        <button type="button" onClick={(ev) => { ev.stopPropagation(); moveUp(); }} disabled={moveUpDisabled} className="p-1 rounded text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed" title="Move up" aria-label="Move up">↑</button>
+                        <button type="button" onClick={(ev) => { ev.stopPropagation(); moveDown(); }} disabled={moveDownDisabled} className="p-1 rounded text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed" title="Move down" aria-label="Move down">↓</button>
+                        <button type="button" onClick={() => setEditingExperienceId(e.id)} className="text-blue-600 text-sm hover:underline">Edit</button>
+                        <button type="button" onClick={() => deleteExperience(e.id)} className="text-red-600 text-sm hover:underline">Delete</button>
+                      </span>
+                    </>
+                  )}
                 </li>
-              )
-            )}
+                );
+              }}
+            />
           </ul>
         ) : (
           <p className="text-sm text-gray-500">No experience added yet.</p>
@@ -494,28 +609,45 @@ export default function ProfilePage() {
           />
         )}
         {data?.skills?.length ? (
-          <ul className="space-y-1">
-            {data.skills.map((s) =>
-              editingSkillId === s.id ? (
-                <EditSkillForm
-                  key={s.id}
-                  item={s}
-                  onSaved={() => {
-                    loadProfile();
-                    setEditingSkillId(null);
-                  }}
-                  onCancel={() => setEditingSkillId(null)}
-                />
-              ) : (
-                <li key={s.id} className="flex items-center justify-between py-0.5">
-                  <span className="text-sm">{s.name}{s.category ? ` (${s.category})` : ""}</span>
-                  <span className="flex gap-1 shrink-0">
-                    <button type="button" onClick={() => setEditingSkillId(s.id)} className="text-blue-600 text-sm hover:underline">Edit</button>
-                    <button type="button" onClick={() => deleteSkill(s.id)} className="text-red-600 text-sm hover:underline">Delete</button>
-                  </span>
+          <ul className="space-y-1 list-none pl-0">
+            <SortableSectionList
+              items={data.skills}
+              onReorder={reorderSkills}
+              reorderDisabled={data.skills.length <= 1}
+              renderItem={(s, _index, { sortableProps, moveUp, moveDown, moveUpDisabled, moveDownDisabled }) => {
+                const isEditing = editingSkillId === s.id;
+                return (
+                <li
+                  ref={sortableProps.setNodeRef}
+                  style={sortableProps.style}
+                  {...sortableProps.attributes}
+                  {...(!isEditing && (sortableProps.listeners as Record<string, unknown>))}
+                  className={`flex items-center justify-between py-0.5 ${!isEditing ? "cursor-grab active:cursor-grabbing touch-none" : ""}`}
+                >
+                  {isEditing ? (
+                    <EditSkillForm
+                      item={s}
+                      onSaved={() => {
+                        loadProfile();
+                        setEditingSkillId(null);
+                      }}
+                      onCancel={() => setEditingSkillId(null)}
+                    />
+                  ) : (
+                    <>
+                      <span className="text-sm flex-1 min-w-0">{s.name}{s.category ? ` (${s.category})` : ""}</span>
+                      <span className="flex items-center gap-1 shrink-0">
+                        <button type="button" onClick={(ev) => { ev.stopPropagation(); moveUp(); }} disabled={moveUpDisabled} className="p-1 rounded text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed" title="Move up" aria-label="Move up">↑</button>
+                        <button type="button" onClick={(ev) => { ev.stopPropagation(); moveDown(); }} disabled={moveDownDisabled} className="p-1 rounded text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed" title="Move down" aria-label="Move down">↓</button>
+                        <button type="button" onClick={() => setEditingSkillId(s.id)} className="text-blue-600 text-sm hover:underline">Edit</button>
+                        <button type="button" onClick={() => deleteSkill(s.id)} className="text-red-600 text-sm hover:underline">Delete</button>
+                      </span>
+                    </>
+                  )}
                 </li>
-              )
-            )}
+                );
+              }}
+            />
           </ul>
         ) : (
           <p className="text-sm text-gray-500">No skills added yet. Duplicate skills are not added.</p>
@@ -538,33 +670,50 @@ export default function ProfilePage() {
           />
         )}
         {(data?.certifications ?? []).length > 0 ? (
-          <ul className="space-y-2">
-            {(data?.certifications ?? []).map((c) =>
-              editingCertId === c.id ? (
-                <EditCertificationForm
-                  key={c.id}
-                  item={c}
-                  onSaved={() => {
-                    loadProfile();
-                    setEditingCertId(null);
-                  }}
-                  onCancel={() => setEditingCertId(null)}
-                />
-              ) : (
-                <li key={c.id} className="flex items-start justify-between gap-2 py-1 border-b border-gray-100 last:border-0">
-                  <div className="text-sm">
-                    <strong>{c.name}</strong>
-                    {c.issuer && ` — ${c.issuer}`}
-                    {c.date && ` (${c.date})`}
-                    {c.url && <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 ml-1">Link</a>}
-                  </div>
-                  <span className="flex gap-1 shrink-0">
-                    <button type="button" onClick={() => setEditingCertId(c.id)} className="text-blue-600 text-sm hover:underline">Edit</button>
-                    <button type="button" onClick={() => deleteCertification(c.id)} className="text-red-600 text-sm hover:underline">Delete</button>
-                  </span>
+          <ul className="space-y-2 list-none pl-0">
+            <SortableSectionList
+              items={data?.certifications ?? []}
+              onReorder={reorderCertifications}
+              reorderDisabled={(data?.certifications ?? []).length <= 1}
+              renderItem={(c, _index, { sortableProps, moveUp, moveDown, moveUpDisabled, moveDownDisabled }) => {
+                const isEditing = editingCertId === c.id;
+                return (
+                <li
+                  ref={sortableProps.setNodeRef}
+                  style={sortableProps.style}
+                  {...sortableProps.attributes}
+                  {...(!isEditing && (sortableProps.listeners as Record<string, unknown>))}
+                  className={`flex items-start justify-between gap-2 py-1 border-b border-gray-100 last:border-0 ${!isEditing ? "cursor-grab active:cursor-grabbing touch-none" : ""}`}
+                >
+                  {isEditing ? (
+                    <EditCertificationForm
+                      item={c}
+                      onSaved={() => {
+                        loadProfile();
+                        setEditingCertId(null);
+                      }}
+                      onCancel={() => setEditingCertId(null)}
+                    />
+                  ) : (
+                    <>
+                      <div className="text-sm flex-1 min-w-0">
+                        <strong>{c.name}</strong>
+                        {c.issuer && ` — ${c.issuer}`}
+                        {c.date && ` (${c.date})`}
+                        {c.url && <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 ml-1">Link</a>}
+                      </div>
+                      <span className="flex items-center gap-1 shrink-0">
+                        <button type="button" onClick={(ev) => { ev.stopPropagation(); moveUp(); }} disabled={moveUpDisabled} className="p-1 rounded text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed" title="Move up" aria-label="Move up">↑</button>
+                        <button type="button" onClick={(ev) => { ev.stopPropagation(); moveDown(); }} disabled={moveDownDisabled} className="p-1 rounded text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed" title="Move down" aria-label="Move down">↓</button>
+                        <button type="button" onClick={() => setEditingCertId(c.id)} className="text-blue-600 text-sm hover:underline">Edit</button>
+                        <button type="button" onClick={() => deleteCertification(c.id)} className="text-red-600 text-sm hover:underline">Delete</button>
+                      </span>
+                    </>
+                  )}
                 </li>
-              )
-            )}
+                );
+              }}
+            />
           </ul>
         ) : (
           <p className="text-sm text-gray-500">No certifications added yet.</p>
@@ -587,33 +736,50 @@ export default function ProfilePage() {
           />
         )}
         {(data?.awards ?? []).length > 0 ? (
-          <ul className="space-y-2">
-            {(data?.awards ?? []).map((a) =>
-              editingAwardId === a.id ? (
-                <EditAwardForm
-                  key={a.id}
-                  item={a}
-                  onSaved={() => {
-                    loadProfile();
-                    setEditingAwardId(null);
-                  }}
-                  onCancel={() => setEditingAwardId(null)}
-                />
-              ) : (
-                <li key={a.id} className="flex items-start justify-between gap-2 py-1 border-b border-gray-100 last:border-0">
-                  <div className="text-sm">
-                    <strong>{a.title}</strong>
-                    {a.issuer && ` — ${a.issuer}`}
-                    {a.date && ` (${a.date})`}
-                    {a.description && <p className="text-gray-600 mt-0.5">{a.description}</p>}
-                  </div>
-                  <span className="flex gap-1 shrink-0">
-                    <button type="button" onClick={() => setEditingAwardId(a.id)} className="text-blue-600 text-sm hover:underline">Edit</button>
-                    <button type="button" onClick={() => deleteAward(a.id)} className="text-red-600 text-sm hover:underline">Delete</button>
-                  </span>
+          <ul className="space-y-2 list-none pl-0">
+            <SortableSectionList
+              items={data?.awards ?? []}
+              onReorder={reorderAwards}
+              reorderDisabled={(data?.awards ?? []).length <= 1}
+              renderItem={(a, _index, { sortableProps, moveUp, moveDown, moveUpDisabled, moveDownDisabled }) => {
+                const isEditing = editingAwardId === a.id;
+                return (
+                <li
+                  ref={sortableProps.setNodeRef}
+                  style={sortableProps.style}
+                  {...sortableProps.attributes}
+                  {...(!isEditing && (sortableProps.listeners as Record<string, unknown>))}
+                  className={`flex items-start justify-between gap-2 py-1 border-b border-gray-100 last:border-0 ${!isEditing ? "cursor-grab active:cursor-grabbing touch-none" : ""}`}
+                >
+                  {isEditing ? (
+                    <EditAwardForm
+                      item={a}
+                      onSaved={() => {
+                        loadProfile();
+                        setEditingAwardId(null);
+                      }}
+                      onCancel={() => setEditingAwardId(null)}
+                    />
+                  ) : (
+                    <>
+                      <div className="text-sm flex-1 min-w-0">
+                        <strong>{a.title}</strong>
+                        {a.issuer && ` — ${a.issuer}`}
+                        {a.date && ` (${a.date})`}
+                        {a.description && <p className="text-gray-600 mt-0.5">{a.description}</p>}
+                      </div>
+                      <span className="flex items-center gap-1 shrink-0">
+                        <button type="button" onClick={(ev) => { ev.stopPropagation(); moveUp(); }} disabled={moveUpDisabled} className="p-1 rounded text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed" title="Move up" aria-label="Move up">↑</button>
+                        <button type="button" onClick={(ev) => { ev.stopPropagation(); moveDown(); }} disabled={moveDownDisabled} className="p-1 rounded text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed" title="Move down" aria-label="Move down">↓</button>
+                        <button type="button" onClick={() => setEditingAwardId(a.id)} className="text-blue-600 text-sm hover:underline">Edit</button>
+                        <button type="button" onClick={() => deleteAward(a.id)} className="text-red-600 text-sm hover:underline">Delete</button>
+                      </span>
+                    </>
+                  )}
                 </li>
-              )
-            )}
+                );
+              }}
+            />
           </ul>
         ) : (
           <p className="text-sm text-gray-500">No awards added yet.</p>

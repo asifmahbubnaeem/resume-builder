@@ -7,7 +7,7 @@ function getToken(): string | null {
 
 export async function api<T>(
   path: string,
-  options: RequestInit & { body?: unknown } = {}
+  options: Omit<RequestInit, "body"> & { body?: unknown } = {}
 ): Promise<T> {
   const { body, ...rest } = options;
   const headers: HeadersInit = {
@@ -208,6 +208,7 @@ export interface Certification {
   issuer: string | null;
   date: string | null;
   url: string | null;
+  orderIndex?: number;
 }
 
 export interface Award {
@@ -216,6 +217,7 @@ export interface Award {
   issuer: string | null;
   date: string | null;
   description: string | null;
+  orderIndex?: number;
 }
 
 export interface ProfilePayload {
@@ -237,6 +239,7 @@ export interface Education {
   details: string | null;
   gpa: string | null;
   honors: string | null;
+  orderIndex?: number;
 }
 
 export interface Experience {
@@ -246,12 +249,14 @@ export interface Experience {
   startDate: string | null;
   endDate: string | null;
   bullets: string[];
+  orderIndex?: number;
 }
 
 export interface Skill {
   id: string;
   name: string;
   category: string | null;
+  orderIndex?: number;
 }
 
 export interface ResumeDraft {

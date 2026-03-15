@@ -35,7 +35,13 @@ profileRouter.get("/", async (req: AuthRequest, res) => {
   try {
     const profile = await prisma.profile.findUnique({
       where: { userId: req.user!.userId },
-      include: { educations: true, experiences: true, skills: true, certifications: true, awards: true },
+      include: {
+        educations: { orderBy: { orderIndex: "asc" } },
+        experiences: { orderBy: { orderIndex: "asc" } },
+        skills: { orderBy: { orderIndex: "asc" } },
+        certifications: { orderBy: { orderIndex: "asc" } },
+        awards: { orderBy: { orderIndex: "asc" } },
+      },
     });
     if (!profile) return res.json(null);
     const { profileImageKey, ...rest } = profile;
@@ -79,7 +85,13 @@ profileRouter.put("/", async (req: AuthRequest, res) => {
         ...(body.professionTrack !== undefined && { professionTrack: body.professionTrack }),
         ...(body.careerObjective !== undefined && { careerObjective: body.careerObjective }),
       },
-      include: { educations: true, experiences: true, skills: true, certifications: true, awards: true },
+      include: {
+        educations: { orderBy: { orderIndex: "asc" } },
+        experiences: { orderBy: { orderIndex: "asc" } },
+        skills: { orderBy: { orderIndex: "asc" } },
+        certifications: { orderBy: { orderIndex: "asc" } },
+        awards: { orderBy: { orderIndex: "asc" } },
+      },
     });
     const { profileImageKey, ...rest } = profile;
     const profileImageUrl = profileImageKey ? await getPresignedProfileImageUrl(profileImageKey) : null;
@@ -113,7 +125,13 @@ profileRouter.post("/image", profileImageUpload.single("file"), async (req: Auth
       where: { userId },
       create: { userId, profileImageKey: key },
       update: { profileImageKey: key },
-      include: { educations: true, experiences: true, skills: true, certifications: true, awards: true },
+      include: {
+        educations: { orderBy: { orderIndex: "asc" } },
+        experiences: { orderBy: { orderIndex: "asc" } },
+        skills: { orderBy: { orderIndex: "asc" } },
+        certifications: { orderBy: { orderIndex: "asc" } },
+        awards: { orderBy: { orderIndex: "asc" } },
+      },
     });
     const { profileImageKey: _key, ...rest } = profile;
     const profileImageUrl = await getPresignedProfileImageUrl(key);

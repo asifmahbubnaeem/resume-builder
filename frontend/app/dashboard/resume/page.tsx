@@ -107,7 +107,7 @@ export default function ResumePage() {
           <button
             type="button"
             onClick={handleExport}
-            disabled={exporting || (limits && !limits.canExportResume)}
+            disabled={!!(exporting || (limits != null && !limits.canExportResume))}
             className="w-full sm:w-auto px-5 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50"
           >
             {exporting ? "Generating PDF…" : "Export PDF"}

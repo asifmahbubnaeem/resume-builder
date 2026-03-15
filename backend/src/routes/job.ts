@@ -3,7 +3,7 @@ import { authMiddleware, type AuthRequest } from "../middleware/auth.js";
 import { checkJobFeature } from "../lib/subscriptionLimits.js";
 import { fetchJobText, parseJobWithLLM } from "../lib/jobParser.js";
 import { computeMatch } from "../lib/matchScorer.js";
-import { generateResumePdf, generateCoverLetterPdf } from "../lib/pdfGenerator.js";
+import { generateResumePdf, generateCoverLetterPdf, isValidResumeTemplateId } from "../lib/pdfGenerator.js";
 import { generateCoverLetter } from "../lib/coverLetter.js";
 import { prisma } from "../lib/prisma.js";
 
@@ -53,7 +53,7 @@ jobRouter.post("/:jobId/tailored-resume", async (req: AuthRequest, res) => {
   try {
     const jobId = req.params.jobId;
     const { templateId } = req.body as { templateId?: string };
-    const template = templateId ?? "classic";
+    const template = typeof templateId === "string" && isValidResumeTemplateId(templateId) ? templateId : "classic";
     const pdfUrl = await generateResumePdf(req.user!.userId, template, jobId);
     res.json({ url: pdfUrl });
   } catch (e) {

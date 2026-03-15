@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { authMiddleware, type AuthRequest } from "../middleware/auth.js";
 import { getProfileForResume } from "../lib/profileForResume.js";
-import { generateResumePdf } from "../lib/pdfGenerator.js";
+import { generateResumePdf, getResumeTemplates, isValidResumeTemplateId } from "../lib/pdfGenerator.js";
 import { checkResumeLimit } from "../lib/subscriptionLimits.js";
 
 export const resumeRouter = Router();
@@ -18,6 +18,10 @@ resumeRouter.get("/draft", async (req: AuthRequest, res) => {
   }
 });
 
+resumeRouter.get("/templates", (_req, res) => {
+  res.json(getResumeTemplates());
+});
+
 resumeRouter.post("/export", async (req: AuthRequest, res) => {
   try {
     const canExport = await checkResumeLimit(req.user!.userId);
@@ -26,7 +30,7 @@ resumeRouter.post("/export", async (req: AuthRequest, res) => {
       return;
     }
     const { templateId } = req.body as { templateId?: string };
-    const template = templateId ?? "classic";
+    const template = typeof templateId === "string" && isValidResumeTemplateId(templateId) ? templateId : "classic";
     const pdfUrl = await generateResumePdf(req.user!.userId, template, null);
     res.json({ url: pdfUrl });
   } catch (e) {

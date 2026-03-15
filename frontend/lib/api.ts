@@ -85,8 +85,15 @@ export const profile = {
     api<void>(`/api/profile/awards/${id}`, { method: "DELETE" }),
 };
 
+export interface ResumeTemplate {
+  id: string;
+  name: string;
+  description: string;
+}
+
 export const resume = {
   getDraft: () => api<ResumeDraft>("/api/resume/draft"),
+  getTemplates: () => api<ResumeTemplate[]>("/api/resume/templates"),
   exportPdf: (templateId: string) =>
     api<{ url: string }>("/api/resume/export", { method: "POST", body: { templateId } }),
 };

@@ -3,15 +3,31 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { resume as resumeApi, subscription } from "@/lib/api";
-import type { ResumeDraft } from "@/lib/api";
+import type { ResumeDraft, ResumeTemplate } from "@/lib/api";
 
-const TEMPLATES = [
-  { id: "classic", name: "Classic" },
-  { id: "modern", name: "Modern" },
+const FALLBACK_TEMPLATES: ResumeTemplate[] = [
+  { id: "classic", name: "Classic", description: "Traditional serif layout, ideal for conservative industries." },
+  { id: "modern", name: "Modern", description: "Clean sans-serif with blue accents, great for tech and startups." },
+  { id: "minimal", name: "Minimal", description: "Simple and understated, focuses on content over style." },
+  { id: "table", name: "Table", description: "Table layout for education and experience; clear rows and columns." },
+  { id: "bullet", name: "Bullet", description: "Bullet-heavy; experience and skills as lists, compact." },
+  { id: "descriptive", name: "Descriptive", description: "Paragraph-style summaries; less list-heavy, more prose." },
+  { id: "multipanel", name: "Two-panel", description: "Two-column layout with sidebar for contact and skills." },
 ];
+
+const LAYOUT_LABEL: Record<string, string> = {
+  classic: "Default",
+  modern: "Default",
+  minimal: "Default",
+  table: "Table",
+  bullet: "Bullet",
+  descriptive: "Descriptive",
+  multipanel: "Two-panel",
+};
 
 export default function ResumePage() {
   const [draft, setDraft] = useState<ResumeDraft | null>(null);
+  const [templates, setTemplates] = useState<ResumeTemplate[]>(FALLBACK_TEMPLATES);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState("classic");
@@ -19,6 +35,7 @@ export default function ResumePage() {
 
   useEffect(() => {
     resumeApi.getDraft().then(setDraft).catch(() => setDraft(null)).finally(() => setLoading(false));
+    resumeApi.getTemplates().then(setTemplates).catch(() => setTemplates(FALLBACK_TEMPLATES));
     subscription.getLimits().then(setLimits).catch(() => setLimits(null));
   }, []);
 
@@ -53,24 +70,31 @@ export default function ResumePage() {
 
   return (
     <div className="max-w-4xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-4">Resume</h1>
-      <div className="flex flex-col lg:flex-row gap-6">
-        <div className="lg:w-1/2 space-y-4">
+      <h1 className="text-2xl font-bold text-gray-900 mb-2">Resume</h1>
+      <p className="text-gray-600 mb-6">Choose a template, then export your resume as PDF.</p>
+      <div className="flex flex-col lg:flex-row gap-8">
+        <div className="lg:w-1/2 space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Template</label>
-            <div className="flex gap-2">
-              {TEMPLATES.map((t) => (
+            <label className="block text-sm font-medium text-gray-700 mb-3">Choose a template</label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {templates.map((t) => (
                 <button
                   key={t.id}
                   type="button"
                   onClick={() => setSelectedTemplate(t.id)}
-                  className={`px-4 py-2 rounded-lg border ${
+                  className={`text-left rounded-xl border-2 p-4 transition-colors ${
                     selectedTemplate === t.id
-                      ? "border-blue-600 bg-blue-50 text-blue-700"
-                      : "border-gray-300 hover:bg-gray-50"
+                      ? "border-blue-600 bg-blue-50/80 shadow-sm"
+                      : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
                   }`}
                 >
-                  {t.name}
+                  <span className="inline-block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                    {LAYOUT_LABEL[t.id] ?? "Template"}
+                  </span>
+                  <span className={`block font-semibold ${selectedTemplate === t.id ? "text-blue-700" : "text-gray-900"}`}>
+                    {t.name}
+                  </span>
+                  <span className="mt-1 block text-sm text-gray-600">{t.description}</span>
                 </button>
               ))}
             </div>
@@ -84,7 +108,7 @@ export default function ResumePage() {
             type="button"
             onClick={handleExport}
             disabled={exporting || (limits && !limits.canExportResume)}
-            className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50"
           >
             {exporting ? "Generating PDF…" : "Export PDF"}
           </button>

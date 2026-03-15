@@ -1,8 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { jobs as jobsApi, subscription } from "@/lib/api";
-import type { JobAnalysisResponse } from "@/lib/api";
+import { jobs as jobsApi, resume as resumeApi, subscription } from "@/lib/api";
+import type { JobAnalysisResponse, ResumeTemplate } from "@/lib/api";
+
+const FALLBACK_TEMPLATES: ResumeTemplate[] = [
+  { id: "classic", name: "Classic", description: "" },
+  { id: "modern", name: "Modern", description: "" },
+  { id: "minimal", name: "Minimal", description: "" },
+  { id: "table", name: "Table", description: "" },
+  { id: "bullet", name: "Bullet", description: "" },
+  { id: "descriptive", name: "Descriptive", description: "" },
+  { id: "multipanel", name: "Two-panel", description: "" },
+];
 
 export default function JobsPage() {
   const [url, setUrl] = useState("");
@@ -13,9 +23,12 @@ export default function JobsPage() {
   const [coverLetterLoading, setCoverLetterLoading] = useState(false);
   const [exportingCover, setExportingCover] = useState(false);
   const [limits, setLimits] = useState<{ canUseJobFeature: boolean } | null>(null);
+  const [templates, setTemplates] = useState<ResumeTemplate[]>(FALLBACK_TEMPLATES);
+  const [tailoredTemplateId, setTailoredTemplateId] = useState("classic");
 
   useEffect(() => {
     subscription.getLimits().then((l) => setLimits(l ?? null)).catch(() => {});
+    resumeApi.getTemplates().then(setTemplates).catch(() => setTemplates(FALLBACK_TEMPLATES));
   }, []);
 
   async function handleAnalyze(e: React.FormEvent) {
@@ -62,7 +75,7 @@ export default function JobsPage() {
   async function handleTailoredResume() {
     if (!result?.jobId) return;
     try {
-      const { url: pdfUrl } = await jobsApi.tailoredResume(result.jobId, "classic");
+      const { url: pdfUrl } = await jobsApi.tailoredResume(result.jobId, tailoredTemplateId);
       window.open(pdfUrl, "_blank");
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to generate tailored resume");
@@ -134,7 +147,16 @@ export default function JobsPage() {
               </p>
             </div>
           )}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={tailoredTemplateId}
+              onChange={(e) => setTailoredTemplateId(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            >
+              {templates.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
             <button
               type="button"
               onClick={handleTailoredResume}

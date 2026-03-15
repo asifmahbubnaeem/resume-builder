@@ -83,6 +83,22 @@ export const profile = {
     api<Award>(`/api/profile/awards/${id}`, { method: "PATCH", body: data }),
   deleteAward: (id: string) =>
     api<void>(`/api/profile/awards/${id}`, { method: "DELETE" }),
+  uploadImage: async (file: File): Promise<ProfileResponse> => {
+    const token = getToken();
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${API_URL}/api/profile/image`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error((err as { error?: string }).error ?? "Upload failed");
+    }
+    return res.json();
+  },
+  removeImage: () => api<void>("/api/profile/image", { method: "DELETE" }),
 };
 
 export interface ResumeTemplate {
@@ -178,6 +194,7 @@ export interface ProfileResponse {
   links: string[];
   professionTrack: string | null;
   careerObjective: string | null;
+  profileImageUrl?: string | null;
   educations: Education[];
   experiences: Experience[];
   skills: Skill[];

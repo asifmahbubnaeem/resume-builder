@@ -1,8 +1,33 @@
 import { Router } from "express";
+import multer from "multer";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { prisma } from "../lib/prisma.js";
 import { authMiddleware, type AuthRequest } from "../middleware/auth.js";
+import { resizeProfileImage } from "../lib/resizeProfileImage.js";
 
 export const profileRouter = Router();
+const profileImageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+});
+
+const PROFILE_IMAGE_MIMES = ["image/jpeg", "image/png", "image/webp"];
+const S3_BUCKET = process.env.S3_BUCKET ?? "resume-builder";
+const S3_REGION = process.env.S3_REGION ?? "us-east-1";
+
+function getS3Client(): S3Client {
+  return new S3Client({
+    region: S3_REGION,
+    ...(process.env.S3_ENDPOINT && { endpoint: process.env.S3_ENDPOINT, forcePathStyle: true }),
+  });
+}
+
+async function getPresignedProfileImageUrl(key: string, expiresIn = 3600): Promise<string> {
+  const client = getS3Client();
+  const url = await getSignedUrl(client, new GetObjectCommand({ Bucket: S3_BUCKET, Key: key }), { expiresIn });
+  return url;
+}
 
 profileRouter.use(authMiddleware);
 
@@ -12,7 +37,10 @@ profileRouter.get("/", async (req: AuthRequest, res) => {
       where: { userId: req.user!.userId },
       include: { educations: true, experiences: true, skills: true, certifications: true, awards: true },
     });
-    res.json(profile ?? null);
+    if (!profile) return res.json(null);
+    const { profileImageKey, ...rest } = profile;
+    const profileImageUrl = profileImageKey ? await getPresignedProfileImageUrl(profileImageKey) : null;
+    res.json({ ...rest, profileImageUrl });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: "Failed to get profile" });
@@ -53,10 +81,69 @@ profileRouter.put("/", async (req: AuthRequest, res) => {
       },
       include: { educations: true, experiences: true, skills: true, certifications: true, awards: true },
     });
-    res.json(profile);
+    const { profileImageKey, ...rest } = profile;
+    const profileImageUrl = profileImageKey ? await getPresignedProfileImageUrl(profileImageKey) : null;
+    res.json({ ...rest, profileImageUrl });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: "Failed to update profile" });
+  }
+});
+
+profileRouter.post("/image", profileImageUpload.single("file"), async (req: AuthRequest, res) => {
+  try {
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: "No file uploaded" });
+    if (!PROFILE_IMAGE_MIMES.includes(file.mimetype)) {
+      return res.status(400).json({ error: "Only JPEG, PNG, or WebP images allowed" });
+    }
+    const userId = req.user!.userId;
+    const resized = await resizeProfileImage(file.buffer);
+    const key = `profile-images/${userId}/avatar.jpg`;
+    const client = getS3Client();
+    await client.send(
+      new PutObjectCommand({
+        Bucket: S3_BUCKET,
+        Key: key,
+        Body: resized,
+        ContentType: "image/jpeg",
+      })
+    );
+    const profile = await prisma.profile.upsert({
+      where: { userId },
+      create: { userId, profileImageKey: key },
+      update: { profileImageKey: key },
+      include: { educations: true, experiences: true, skills: true, certifications: true, awards: true },
+    });
+    const { profileImageKey: _key, ...rest } = profile;
+    const profileImageUrl = await getPresignedProfileImageUrl(key);
+    res.json({ ...rest, profileImageUrl });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Upload failed" });
+  }
+});
+
+profileRouter.delete("/image", async (req: AuthRequest, res) => {
+  try {
+    const profile = await prisma.profile.findUnique({ where: { userId: req.user!.userId } });
+    if (!profile) return res.status(404).json({ error: "Profile not found" });
+    const oldKey = profile.profileImageKey;
+    await prisma.profile.update({
+      where: { userId: req.user!.userId },
+      data: { profileImageKey: null },
+    });
+    if (oldKey) {
+      try {
+        await getS3Client().send(new DeleteObjectCommand({ Bucket: S3_BUCKET, Key: oldKey }));
+      } catch (e) {
+        console.error("S3 delete failed for profile image:", e);
+      }
+    }
+    res.status(204).send();
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "Failed to remove image" });
   }
 });
 

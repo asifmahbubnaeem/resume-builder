@@ -81,6 +81,7 @@ export function isValidResumeTemplateId(id: string): boolean {
 }
 
 const escape = (s: string | null) => (s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const escapeUrl = (url: string) => url.replace(/&/g, "&amp;");
 
 interface EscapedFragments {
   name: string;
@@ -158,14 +159,27 @@ function buildFragments(data: ResumeData): EscapedFragments {
   };
 }
 
-function buildDefaultLayout(data: ResumeData, t: TemplateStyle, f: EscapedFragments): string {
+function buildResumeHeader(f: EscapedFragments, profileImageUrl: string | null | undefined): string {
+  const photoHtml = profileImageUrl
+    ? `<img class="profile-photo" src="${escapeUrl(profileImageUrl)}" alt="" />`
+    : "";
+  return `
+  <div class="resume-header">
+    <div class="resume-header-text">
+      <h1>${f.name}</h1>
+      <div class="contact">${f.contact}</div>
+      ${f.links}
+      ${f.track}
+    </div>
+    ${photoHtml}
+  </div>`;
+}
+
+function buildDefaultLayout(data: ResumeData, t: TemplateStyle, f: EscapedFragments, profileImageUrl?: string | null): string {
   const h2Transform = t.headingStyle === "uppercase" ? "uppercase" : "none";
   const h2LetterSpacing = t.headingStyle === "uppercase" ? "0.05em" : "0";
   return `
-  <h1>${f.name}</h1>
-  <div class="contact">${f.contact}</div>
-  ${f.links}
-  ${f.track}
+  ${buildResumeHeader(f, profileImageUrl ?? null)}
   ${f.objective}
   <h2>Education</h2>
   ${f.education || "<p>—</p>"}
@@ -177,14 +191,11 @@ function buildDefaultLayout(data: ResumeData, t: TemplateStyle, f: EscapedFragme
   ${(data.awards?.length ?? 0) > 0 ? `<h2>Awards</h2>${f.awards}` : ""}`;
 }
 
-function buildTableLayout(data: ResumeData, t: TemplateStyle, f: EscapedFragments): string {
+function buildTableLayout(data: ResumeData, t: TemplateStyle, f: EscapedFragments, profileImageUrl?: string | null): string {
   const h2Transform = t.headingStyle === "uppercase" ? "uppercase" : "none";
   const h2LetterSpacing = t.headingStyle === "uppercase" ? "0.05em" : "0";
   return `
-  <h1>${f.name}</h1>
-  <div class="contact">${f.contact}</div>
-  ${f.links}
-  ${f.track}
+  ${buildResumeHeader(f, profileImageUrl ?? null)}
   ${f.objective}
   <h2>Education</h2>
   <table class="resume-table"><thead><tr><th>Period</th><th>Degree / Institution</th><th>Details</th></tr></thead><tbody>${f.educationTableRows || "<tr><td colspan=\"3\">—</td></tr>"}</tbody></table>
@@ -196,7 +207,7 @@ function buildTableLayout(data: ResumeData, t: TemplateStyle, f: EscapedFragment
   ${(data.awards?.length ?? 0) > 0 ? `<h2>Awards</h2>${f.awards}` : ""}`;
 }
 
-function buildBulletLayout(data: ResumeData, t: TemplateStyle, f: EscapedFragments): string {
+function buildBulletLayout(data: ResumeData, t: TemplateStyle, f: EscapedFragments, profileImageUrl?: string | null): string {
   const skillsList = data.skills.length
     ? `<ul class="skill-list">${data.skills.map((s) => `<li>${escape(s.name)}</li>`).join("")}</ul>`
     : "<p>—</p>";
@@ -207,10 +218,7 @@ function buildBulletLayout(data: ResumeData, t: TemplateStyle, f: EscapedFragmen
     )
     .join("");
   return `
-  <h1>${f.name}</h1>
-  <div class="contact">${f.contact}</div>
-  ${f.links}
-  ${f.track}
+  ${buildResumeHeader(f, profileImageUrl ?? null)}
   ${f.objective}
   <h2>Education</h2>
   <ul class="section-list">${educationBullets || "<li>—</li>"}</ul>
@@ -222,7 +230,7 @@ function buildBulletLayout(data: ResumeData, t: TemplateStyle, f: EscapedFragmen
   ${(data.awards?.length ?? 0) > 0 ? `<h2>Awards</h2>${f.awards}` : ""}`;
 }
 
-function buildDescriptiveLayout(data: ResumeData, t: TemplateStyle, f: EscapedFragments): string {
+function buildDescriptiveLayout(data: ResumeData, t: TemplateStyle, f: EscapedFragments, profileImageUrl?: string | null): string {
   const educationParagraphs = data.educations
     .map(
       (e) =>
@@ -236,10 +244,7 @@ function buildDescriptiveLayout(data: ResumeData, t: TemplateStyle, f: EscapedFr
     )
     .join("");
   return `
-  <h1>${f.name}</h1>
-  <div class="contact">${f.contact}</div>
-  ${f.links}
-  ${f.track}
+  ${buildResumeHeader(f, profileImageUrl ?? null)}
   ${f.objective}
   <h2>Education</h2>
   ${educationParagraphs || "<p>—</p>"}
@@ -251,7 +256,7 @@ function buildDescriptiveLayout(data: ResumeData, t: TemplateStyle, f: EscapedFr
   ${(data.awards?.length ?? 0) > 0 ? `<h2>Awards</h2>${f.awards}` : ""}`;
 }
 
-function buildMultipanelLayout(data: ResumeData, t: TemplateStyle, f: EscapedFragments): string {
+function buildMultipanelLayout(data: ResumeData, t: TemplateStyle, f: EscapedFragments, profileImageUrl?: string | null): string {
   const skillsList = data.skills.length
     ? `<ul class="sidebar-list">${data.skills.map((s) => `<li>${escape(s.name)}</li>`).join("")}</ul>`
     : "<p>—</p>";
@@ -259,9 +264,13 @@ function buildMultipanelLayout(data: ResumeData, t: TemplateStyle, f: EscapedFra
     (data.certifications?.length ?? 0) > 0
       ? `<h3>Certifications</h3><ul class="sidebar-list">${(data.certifications ?? []).map((c) => `<li>${escape(c.name)}</li>`).join("")}</ul>`
       : "";
+  const sidebarPhoto = profileImageUrl
+    ? `<img class="profile-photo profile-photo-sidebar" src="${escapeUrl(profileImageUrl)}" alt="" />`
+    : "";
   return `
   <div class="two-panel">
     <aside class="sidebar">
+      ${sidebarPhoto}
       <h1>${f.name}</h1>
       <div class="contact">${f.contact}</div>
       ${f.links}
@@ -288,6 +297,10 @@ function getBaseStyles(t: TemplateStyle, layout: LayoutType): string {
   const h2LetterSpacing = t.headingStyle === "uppercase" ? "0.05em" : "0";
   const base = `
     body { font-family: ${t.font}; font-size: 11pt; line-height: 1.4; color: #1f2937; max-width: 800px; margin: 0 auto; padding: 24px; }
+    .resume-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 8px; }
+    .resume-header-text { flex: 1; min-width: 0; }
+    .profile-photo { width: 120px; height: 120px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+    .profile-photo-sidebar { width: 100px; height: 100px; margin-bottom: 12px; }
     h1 { font-size: 24pt; margin: 0 0 8px 0; color: ${t.accent}; }
     .contact { color: #6b7280; margin-bottom: 16px; }
     .objective-p { margin: 4px 0 12px 0; }
@@ -328,22 +341,23 @@ function getBaseStyles(t: TemplateStyle, layout: LayoutType): string {
   return base + tableStyles + bulletStyles + descriptiveStyles + multipanelStyles;
 }
 
-function buildResumeHtml(data: ResumeData, templateId: string): string {
+function buildResumeHtml(data: ResumeData, templateId: string, profileImageUrl?: string | null): string {
   const tid = isValidResumeTemplateId(templateId) ? templateId : "classic";
   const t = RESUME_TEMPLATES[tid];
   const layout = t.layout;
   const f = buildFragments(data);
+  const imageUrl = profileImageUrl ?? data.profileImageUrl ?? null;
 
   const bodyContent =
     layout === "table"
-      ? buildTableLayout(data, t, f)
+      ? buildTableLayout(data, t, f, imageUrl)
       : layout === "bullet"
-        ? buildBulletLayout(data, t, f)
+        ? buildBulletLayout(data, t, f, imageUrl)
         : layout === "descriptive"
-          ? buildDescriptiveLayout(data, t, f)
+          ? buildDescriptiveLayout(data, t, f, imageUrl)
           : layout === "multipanel"
-            ? buildMultipanelLayout(data, t, f)
-            : buildDefaultLayout(data, t, f);
+            ? buildMultipanelLayout(data, t, f, imageUrl)
+            : buildDefaultLayout(data, t, f, imageUrl);
 
   const styles = getBaseStyles(t, layout);
 
@@ -358,6 +372,18 @@ function buildResumeHtml(data: ResumeData, templateId: string): string {
 ${bodyContent}
 </body>
 </html>`;
+}
+
+async function getPresignedProfileImageUrl(key: string, expiresIn = 60): Promise<string> {
+  const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
+  const { GetObjectCommand } = await import("@aws-sdk/client-s3");
+  const { S3Client } = await import("@aws-sdk/client-s3");
+  const bucket = process.env.S3_BUCKET ?? "resume-builder";
+  const client = new S3Client({
+    region: process.env.S3_REGION ?? "us-east-1",
+    ...(process.env.S3_ENDPOINT && { endpoint: process.env.S3_ENDPOINT, forcePathStyle: true }),
+  });
+  return getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn });
 }
 
 export async function generateResumePdf(
@@ -376,8 +402,20 @@ export async function generateResumePdf(
       }
     }
   }
+  const profileWithImage = await prisma.profile.findUnique({
+    where: { userId },
+    select: { profileImageKey: true },
+  });
+  let profileImageUrl: string | null = null;
+  if (profileWithImage?.profileImageKey) {
+    try {
+      profileImageUrl = await getPresignedProfileImageUrl(profileWithImage.profileImageKey);
+    } catch (e) {
+      console.error("Presign profile image failed:", e);
+    }
+  }
   const data = await getProfileForResume(userId, keywords);
-  const html = buildResumeHtml(data, templateId);
+  const html = buildResumeHtml(data, templateId, profileImageUrl);
 
   const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });
   let pdfBuffer: Buffer | Uint8Array;
@@ -451,7 +489,7 @@ export async function generateCoverLetterPdf(userId: string, jobId: string, cont
     });
     await client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: pdfBuffer, ContentType: "application/pdf" }));
   } catch {
-    return `data:application/pdf;base64,${pdfBuffer.toString("base64")}`;
+    return `data:application/pdf;base64,${Buffer.from(pdfBuffer).toString("base64")}`;
   }
   await prisma.generatedPdf.create({ data: { userId, type: "cover_letter", storageKey: key, jobId } });
   const { getSignedUrl: presign } = await import("@aws-sdk/s3-request-presigner");

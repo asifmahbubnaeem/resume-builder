@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { profile as profileApi, conversation } from "@/lib/api";
 import type {
   ProfileResponse,
@@ -35,6 +35,8 @@ export default function ProfilePage() {
   const [addingSection, setAddingSection] = useState<
     "education" | "experience" | "skill" | "certification" | "award" | null
   >(null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   function loadProfile() {
     profileApi.get().then(setData).catch(() => setData(null)).finally(() => setLoading(false));
@@ -177,6 +179,29 @@ export default function ProfilePage() {
     }
   }
 
+  async function handleImageUpload(file: File) {
+    if (!file.type.startsWith("image/")) return;
+    setImageUploading(true);
+    try {
+      const updated = await profileApi.uploadImage(file);
+      setData(updated);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setImageUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function handleRemoveImage() {
+    try {
+      await profileApi.removeImage();
+      loadProfile();
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
   if (loading) return <div className="p-6">Loading…</div>;
 
   return (
@@ -185,6 +210,61 @@ export default function ProfilePage() {
       <p className="text-gray-600">
         Edit your profile. Add or remove contact info, education, experience, skills, certifications, and awards.
       </p>
+
+      {/* Profile photo */}
+      <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-200">
+          <span className="font-medium text-gray-900">Profile photo</span>
+        </div>
+        <div className="p-4 flex items-center gap-4">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleImageUpload(file);
+            }}
+          />
+          {data?.profileImageUrl ? (
+            <>
+              <img
+                src={data.profileImageUrl}
+                alt="Profile"
+                className="w-24 h-24 rounded-lg object-cover border border-gray-200"
+              />
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={imageUploading}
+                  className="text-sm text-blue-600 hover:underline disabled:opacity-50"
+                >
+                  {imageUploading ? "Uploading…" : "Change photo"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  className="text-sm text-red-600 hover:underline"
+                >
+                  Remove
+                </button>
+              </div>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={imageUploading}
+              className="text-sm text-blue-600 hover:underline disabled:opacity-50"
+            >
+              {imageUploading ? "Uploading…" : "Upload photo"}
+            </button>
+          )}
+          <p className="text-gray-500 text-sm">Used on your resume. JPEG, PNG or WebP, max 5 MB. We resize to 200×200.</p>
+        </div>
+      </section>
 
       {/* Contact */}
       <section className="bg-white rounded-lg border border-gray-200 overflow-hidden">

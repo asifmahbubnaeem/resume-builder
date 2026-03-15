@@ -15,6 +15,8 @@ export interface ResumeData {
   awards: Array<{ title: string; issuer: string | null; date: string | null; description: string | null }>;
   /** For tailored resume: reorder/emphasize by job requirements */
   jobRequirementIds?: string[];
+  /** Resolved in PDF flow from profile.profileImageKey (presigned URL) */
+  profileImageUrl?: string | null;
 }
 
 export async function getProfileForResume(

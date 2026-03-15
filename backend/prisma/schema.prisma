@@ -1,0 +1,132 @@
+// Resume Builder - PostgreSQL schema via Prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String    @map("password_hash")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  subscription  String    @default("free") // "free" | "paid"
+  profile       Profile?
+  uploads       Upload[]
+  jobs          Job[]
+  generatedPdfs GeneratedPdf[]
+}
+
+model Profile {
+  id             String   @id @default(cuid())
+  userId         String   @unique @map("user_id")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Contact (denormalized for quick access; also in ContactInfo)
+  fullName       String?  @map("full_name")
+  email          String?
+  phone          String?
+  location       String?
+  links          String[] // JSON array of URLs or "LinkedIn|url"
+  professionTrack String? @map("profession_track")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  educations     Education[]
+  experiences    Experience[]
+  skills         Skill[]
+  certifications Certification[]
+  awards         Award[]
+}
+
+model Education {
+  id          String   @id @default(cuid())
+  profileId   String   @map("profile_id")
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  degree      String
+  institution String
+  startDate   String?  @map("start_date") // e.g. "2018"
+  endDate     String?  @map("end_date")
+  details     String?  // optional description
+  gpa         String?  // e.g. "3.8/4.0"
+  honors      String?  // e.g. "Summa Cum Laude"
+  orderIndex  Int      @default(0) @map("order_index")
+}
+
+model Experience {
+  id          String   @id @default(cuid())
+  profileId   String   @map("profile_id")
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  role        String
+  company     String
+  startDate   String?  @map("start_date")
+  endDate     String?  @map("end_date")
+  bullets     String[] // array of bullet points
+  orderIndex  Int      @default(0) @map("order_index")
+}
+
+model Skill {
+  id         String   @id @default(cuid())
+  profileId  String   @map("profile_id")
+  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  name       String
+  category   String?  // e.g. "Testing", "Languages"
+  orderIndex Int      @default(0) @map("order_index")
+}
+
+model Certification {
+  id          String   @id @default(cuid())
+  profileId   String   @map("profile_id")
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  name        String
+  issuer      String?
+  date        String?  // e.g. "2023"
+  url         String?  @db.Text
+  orderIndex  Int      @default(0) @map("order_index")
+}
+
+model Award {
+  id          String   @id @default(cuid())
+  profileId   String   @map("profile_id")
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  title       String
+  issuer      String?
+  date        String?
+  description String?  @db.Text
+  orderIndex  Int      @default(0) @map("order_index")
+}
+
+model Upload {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  filename  String
+  mimeType  String   @map("mime_type")
+  storageKey String  @map("storage_key") // S3 key
+  extractedText String? @map("extracted_text") @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+}
+
+model Job {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceUrl       String?  @map("source_url") @db.Text
+  rawText         String   @map("raw_text") @db.Text
+  parsedRequirements String? @map("parsed_requirements") @db.Text // JSON array of requirements
+  roleTitle       String?  @map("role_title")
+  createdAt       DateTime @default(now()) @map("created_at")
+}
+
+model GeneratedPdf {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // "resume" | "cover_letter"
+  storageKey String  @map("storage_key")
+  templateId String? @map("template_id")
+  jobId     String?  @map("job_id") // if tailored to a job
+  createdAt DateTime @default(now()) @map("created_at")
+}

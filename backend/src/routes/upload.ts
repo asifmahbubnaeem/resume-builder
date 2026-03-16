@@ -31,12 +31,22 @@ uploadRouter.post("/", upload.single("file"), async (req: AuthRequest, res) => {
     });
 
     if (extractedText) {
+      console.log("Upload: extracted text length", extractedText.length);
       const parsed = await parseResumeWithLLM(extractedText, req.user!.userId);
+      console.log("Upload: parseResumeWithLLM result", { parsed });
       if (parsed) {
-        return res.json({ extractedText: extractedText.slice(0, 500), parsed, message: "File uploaded and parsed. Profile updated." });
+        return res.json({
+          extractedText: extractedText.slice(0, 500),
+          parsed,
+          message: "File uploaded and parsed. Profile updated.",
+        });
       }
     }
-    res.json({ extractedText: extractedText?.slice(0, 500) ?? null, message: "File uploaded. Extracted text saved." });
+    res.json({
+      extractedText: extractedText?.slice(0, 500) ?? null,
+      parsed: false,
+      message: "File uploaded. Extracted text saved, but parsing did not run or failed.",
+    });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: "Upload failed" });

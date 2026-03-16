@@ -1,7 +1,13 @@
-import OpenAI from "openai";
+// import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { prisma } from "./prisma.js";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// OpenAI client (kept for reference during dev)
+// const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// Gemini client
+const geminiApiKey = process.env.GEMINI_API_KEY;
+const geminiClient = geminiApiKey ? new GoogleGenerativeAI(geminiApiKey) : null;
 
 const EXTRACTION_PROMPT = `You are a resume parser. Extract structured data from the following resume text.
 Return ONLY valid JSON in this exact shape (no markdown, no explanation):
@@ -12,6 +18,7 @@ Return ONLY valid JSON in this exact shape (no markdown, no explanation):
   "location": "string or null",
   "links": ["string array of URLs or labels like LinkedIn"],
   "professionTrack": "string or null - e.g. Test Engineer, Software Developer",
+  "careerObjective": "string or null - short summary or objective statement if present",
   "educations": [{"degree": "string", "institution": "string", "startDate": "string or null", "endDate": "string or null", "details": "string or null"}],
   "experiences": [{"role": "string", "company": "string", "startDate": "string or null", "endDate": "string or null", "bullets": ["string"]}],
   "skills": [{"name": "string", "category": "string or null"}]
@@ -22,29 +29,49 @@ export async function parseResumeWithLLM(
   extractedText: string,
   userId: string
 ): Promise<boolean> {
-  if (!process.env.OPENAI_API_KEY) return false;
+  if (!geminiClient) {
+    console.warn("parseResumeWithLLM: GEMINI_API_KEY is not set, skipping parsing.");
+    return false;
+  }
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: EXTRACTION_PROMPT },
-        { role: "user", content: extractedText.slice(0, 12000) },
-      ],
-      response_format: { type: "json_object" },
+    const model = geminiClient.getGenerativeModel({
+      // Use the selected Gemini 2.5 Flash model
+      model: "gemini-2.5-flash",
     });
-    const raw = completion.choices[0]?.message?.content;
-    if (!raw) return false;
-    const data = JSON.parse(raw) as {
+
+    const prompt = `${EXTRACTION_PROMPT}\n\nRESUME TEXT:\n${extractedText.slice(
+      0,
+      12000
+    )}`;
+
+    const result = await model.generateContent({
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: prompt }],
+        },
+      ],
+      generationConfig: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    const rawText = result.response.text();
+    if (!rawText) return false;
+    const data = JSON.parse(rawText) as {
       fullName?: string | null;
       email?: string | null;
       phone?: string | null;
       location?: string | null;
       links?: string[];
       professionTrack?: string | null;
+      careerObjective?: string | null;
       educations?: Array<{ degree?: string; institution?: string; startDate?: string | null; endDate?: string | null; details?: string | null }>;
       experiences?: Array<{ role?: string; company?: string; startDate?: string | null; endDate?: string | null; bullets?: string[] }>;
       skills?: Array<{ name?: string; category?: string | null }>;
     };
+
+    console.log("parseResumeWithLLM: parsed data for user", userId, JSON.stringify(data, null, 2));
 
     const profile = await prisma.profile.upsert({
       where: { userId },
@@ -56,6 +83,7 @@ export async function parseResumeWithLLM(
         location: data.location ?? null,
         links: Array.isArray(data.links) ? data.links : [],
         professionTrack: data.professionTrack ?? null,
+        careerObjective: data.careerObjective ?? null,
       },
       update: {
         fullName: data.fullName ?? undefined,
@@ -64,6 +92,7 @@ export async function parseResumeWithLLM(
         location: data.location ?? undefined,
         links: Array.isArray(data.links) ? data.links : undefined,
         professionTrack: data.professionTrack ?? undefined,
+        careerObjective: data.careerObjective ?? undefined,
       },
     });
 
@@ -116,7 +145,8 @@ export async function parseResumeWithLLM(
       }
     }
     return true;
-  } catch {
+  } catch (err) {
+    console.error("parseResumeWithLLM: failed to parse resume", err);
     return false;
   }
 }

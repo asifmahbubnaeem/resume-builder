@@ -31,7 +31,7 @@ export async function api<T>(
 
 export const auth = {
   register: (email: string, password: string) =>
-    api<{ user: { id: string; email: string; subscription: string }; token: string }>("/api/auth/register", {
+    api<{ message: string }>("/api/auth/register", {
       method: "POST",
       body: { email, password },
     }),
@@ -42,6 +42,8 @@ export const auth = {
     }),
   me: () =>
     api<{ id: string; email: string; subscription: string; profile?: unknown }>("/api/auth/me"),
+  verifyEmail: (token: string) =>
+    api<{ message: string }>(`/api/auth/verify-email?token=${encodeURIComponent(token)}`),
 };
 
 export const profile = {

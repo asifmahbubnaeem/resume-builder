@@ -15,10 +15,12 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
   subscription  String    @default("free") // "free" | "paid"
+  verified      Boolean   @default(false)
   profile       Profile?
   uploads       Upload[]
   jobs          Job[]
   generatedPdfs GeneratedPdf[]
+  verificationTokens EmailVerificationToken[]
 }
 
 model Profile {
@@ -131,4 +133,14 @@ model GeneratedPdf {
   templateId String? @map("template_id")
   jobId     String?  @map("job_id") // if tailored to a job
   createdAt DateTime @default(now()) @map("created_at")
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+  usedAt    DateTime? @map("used_at")
 }

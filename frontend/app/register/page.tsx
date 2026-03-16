@@ -13,17 +13,22 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setSuccessMessage("");
     setLoading(true);
     try {
-      const { user, token: t } = await auth.register(email, password);
-      localStorage.setItem("token", t);
-      setToken(t);
-      setUser(user);
-      router.push("/dashboard");
+      const { message } = await auth.register(email, password);
+      setSuccessMessage(message);
+      setEmail("");
+      setPassword("");
+      // After successful registration, guide user to login page.
+      setTimeout(() => {
+        router.push("/login");
+      }, 2500);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
@@ -63,6 +68,7 @@ export default function RegisterPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
+          {successMessage && <p className="text-sm text-green-600">{successMessage}</p>}
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button
             type="submit"

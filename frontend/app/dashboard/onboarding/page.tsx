@@ -14,7 +14,10 @@ function UploadResume({ onUploaded }: { onUploaded: () => void }) {
     setUploading(true);
     setErr("");
     try {
-      await upload.uploadFile(file);
+      const res = await upload.uploadFile(file);
+      // Log parsed information for debugging
+      // This will show `parsed`, any message, and a snippet of extracted text
+      console.log("Upload & parse response:", res);
       onUploaded();
       setFile(null);
     } catch (e) {
